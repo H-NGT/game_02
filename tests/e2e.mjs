@@ -159,6 +159,62 @@ async function runPattern(page, name, points) {
   return { name, traceError, meshCount: trace.meshCount, reach: trace.reach, state, pixels, screenshot };
 }
 
+async function runMobilePhoneFlow(page, viewport, points) {
+  const name = `mobile-${viewport.width}x${viewport.height}`;
+  await page.setViewportSize(viewport);
+  await page.goto(baseUrl, { waitUntil: "networkidle" });
+  await page.waitForSelector("#drawCanvas");
+  await drawPath(page, points);
+
+  const drawLayout = await page.evaluate(() => ({
+    layout: window.__gameDebug.getLayout(),
+    buttons: [...document.querySelectorAll(".controls button")].map((button) => ({
+      text: button.textContent,
+      clientWidth: button.clientWidth,
+      scrollWidth: button.scrollWidth,
+      height: button.getBoundingClientRect().height,
+    })),
+  }));
+  if (drawLayout.layout.panel.height > viewport.height * 0.46) {
+    throw new Error(`${name}: draw sheet is too tall ${JSON.stringify(drawLayout.layout.panel)}`);
+  }
+  if (drawLayout.layout.drawCanvas.display === "none" || drawLayout.layout.drawCanvas.height < 110) {
+    throw new Error(`${name}: draw canvas is not usable ${JSON.stringify(drawLayout.layout.drawCanvas)}`);
+  }
+  if (drawLayout.buttons.some((button) => button.scrollWidth > button.clientWidth + 1 || button.height < 40)) {
+    throw new Error(`${name}: mobile buttons overflow or are too small ${JSON.stringify(drawLayout.buttons)}`);
+  }
+
+  const drawScreenshot = path.join(outDir, `${name}-draw.png`);
+  await page.screenshot({ path: drawScreenshot, fullPage: true });
+
+  await page.click("#attackBtn");
+  await page.waitForTimeout(1150);
+  const attackLayout = await page.evaluate(() => window.__gameDebug.getLayout());
+  if (attackLayout.phase !== "attack") {
+    throw new Error(`${name}: expected attack phase, got ${attackLayout.phase}`);
+  }
+  if (attackLayout.panel.height > 50 || attackLayout.panel.y < viewport.height - 62) {
+    throw new Error(`${name}: attack sheet still covers combat ${JSON.stringify(attackLayout.panel)}`);
+  }
+  if (attackLayout.drawCanvas.display !== "none" || attackLayout.controls.display !== "none") {
+    throw new Error(`${name}: draw controls are still visible during combat ${JSON.stringify(attackLayout)}`);
+  }
+  const visibleFightHeight = attackLayout.panel.y - attackLayout.statusBottom;
+  if (visibleFightHeight < viewport.height * 0.58) {
+    throw new Error(`${name}: visible combat area too small (${visibleFightHeight})`);
+  }
+
+  const attackScreenshot = path.join(outDir, `${name}-attack.png`);
+  await page.screenshot({ path: attackScreenshot, fullPage: true });
+  const pixels = analyzePng(attackScreenshot);
+  if (pixels.green < 120 || pixels.red < 40 || pixels.arenaYellow < 10) {
+    throw new Error(`${name}: mobile combat screenshot lacks visible fighters/weapon ${JSON.stringify(pixels)}`);
+  }
+
+  return { name, drawLayout: drawLayout.layout, attackLayout, pixels, screenshots: [drawScreenshot, attackScreenshot] };
+}
+
 const server = startServer();
 const serverLog = [];
 server.stdout.on("data", (chunk) => serverLog.push(chunk.toString()));
@@ -204,6 +260,30 @@ try {
       { x: 0.72, y: 0.68 },
       { x: 0.48, y: 0.74 },
     ]),
+  );
+  results.push(
+    await runMobilePhoneFlow(
+      page,
+      { width: 390, height: 844 },
+      [
+        { x: 0.12, y: 0.68 },
+        { x: 0.31, y: 0.28 },
+        { x: 0.52, y: 0.58 },
+        { x: 0.82, y: 0.22 },
+      ],
+    ),
+  );
+  results.push(
+    await runMobilePhoneFlow(
+      page,
+      { width: 360, height: 740 },
+      [
+        { x: 0.14, y: 0.58 },
+        { x: 0.36, y: 0.33 },
+        { x: 0.62, y: 0.37 },
+        { x: 0.8, y: 0.62 },
+      ],
+    ),
   );
 
   await browser.close();

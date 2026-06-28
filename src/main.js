@@ -2,6 +2,7 @@ import * as THREE from "three";
 import "./styles.css";
 
 const sceneCanvas = document.querySelector("#scene");
+const appEl = document.querySelector("#app");
 const drawCanvas = document.querySelector("#drawCanvas");
 const drawCtx = drawCanvas.getContext("2d");
 
@@ -211,6 +212,7 @@ window.__gameDebug = {
     round: state.round,
     coins: state.coins,
     inkUsed: state.inkUsed,
+    viewport: [window.innerWidth, window.innerHeight],
     playerPosition: player.position.toArray(),
     enemyPosition: enemy.position.toArray(),
     playerSpeed: player.userData.velocity.length(),
@@ -220,6 +222,39 @@ window.__gameDebug = {
     player: Object.keys(player.userData.parts),
     enemy: Object.keys(enemy.userData.parts),
   }),
+  getLayout: () => {
+    const panel = document.querySelector(".draw-panel");
+    const controls = document.querySelector(".controls");
+    const sceneRect = sceneCanvas.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const drawRect = drawCanvas.getBoundingClientRect();
+    const controlsRect = controls.getBoundingClientRect();
+    const topRect = document.querySelector(".top").getBoundingClientRect();
+    const statusRect = document.querySelector(".status").getBoundingClientRect();
+    return {
+      phase: state.phase,
+      scene: { width: sceneRect.width, height: sceneRect.height },
+      panel: {
+        x: panelRect.x,
+        y: panelRect.y,
+        width: panelRect.width,
+        height: panelRect.height,
+        bottom: window.innerHeight - panelRect.bottom,
+      },
+      drawCanvas: {
+        display: getComputedStyle(drawCanvas).display,
+        width: drawRect.width,
+        height: drawRect.height,
+      },
+      controls: {
+        display: getComputedStyle(controls).display,
+        width: controlsRect.width,
+        height: controlsRect.height,
+      },
+      topBottom: topRect.bottom,
+      statusBottom: statusRect.bottom,
+    };
+  },
   getWeaponTrace: () => {
     const weapon = playerWeapon;
     return {
@@ -510,6 +545,7 @@ function upgrade(kind) {
 
 function updateUi() {
   const inkLimit = state.maxInk + (state.inkLevel - 1) * 170;
+  appEl.dataset.phase = state.phase;
   roundEl.textContent = String(state.round);
   coinsEl.textContent = String(state.coins);
   powerEl.textContent = `${(1 + (state.powerLevel - 1) * 0.18).toFixed(1)}x`;
@@ -538,9 +574,12 @@ inkBtn.addEventListener("click", () => upgrade("ink"));
 function resize() {
   const width = window.innerWidth;
   const height = window.innerHeight;
+  const narrow = width < 620;
+  const short = height < 620;
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
-  camera.position.set(0, height < 620 ? 8.2 : 7.4, height < 620 ? 10.2 : 9.2);
+  camera.fov = narrow ? 54 : 48;
+  camera.position.set(0, narrow ? 8.7 : short ? 8.2 : 7.4, narrow ? 11.4 : short ? 10.2 : 9.2);
   camera.updateProjectionMatrix();
 }
 
