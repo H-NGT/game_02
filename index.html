@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
+    <title>Sketch Armory 3D</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+      <section class="hud top">
+        <div>
+          <p class="label">Round</p>
+          <strong id="round">1</strong>
+        </div>
+        <div>
+          <p class="label">Coins</p>
+          <strong id="coins">0</strong>
+        </div>
+        <div>
+          <p class="label">Power</p>
+          <strong id="power">1.0x</strong>
+        </div>
+      </section>
+      <section class="hud status">
+        <span id="phase">Draw a weapon, then attack.</span>
+      </section>
+      <section class="draw-panel">
+        <div class="panel-header">
+          <div>
+            <p class="label">Ink</p>
+            <div class="meter"><span id="inkFill"></span></div>
+          </div>
+          <button id="clearBtn" type="button" title="Clear drawing">Clear</button>
+        </div>
+        <canvas id="drawCanvas" width="420" height="220" aria-label="Weapon drawing area"></canvas>
+        <div class="controls">
+          <button id="attackBtn" class="primary" type="button">Attack</button>
+          <button id="powerBtn" type="button" title="Spend coins to improve push force">Power +</button>
+          <button id="inkBtn" type="button" title="Spend coins to increase drawing ink">Ink +</button>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
