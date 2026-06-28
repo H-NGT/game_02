@@ -67,8 +67,13 @@ scene.add(grid);
 const playerMat = new THREE.MeshStandardMaterial({ color: 0x30c98b, roughness: 0.5 });
 const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff5d61, roughness: 0.5 });
 const darkMat = new THREE.MeshStandardMaterial({ color: 0x17212a, roughness: 0.72 });
+const skinMat = new THREE.MeshStandardMaterial({ color: 0xf1b891, roughness: 0.58 });
+const hairMat = new THREE.MeshStandardMaterial({ color: 0x20242b, roughness: 0.74 });
+const pantsMat = new THREE.MeshStandardMaterial({ color: 0x263a59, roughness: 0.62 });
+const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111820, roughness: 0.7 });
 const weaponMat = new THREE.MeshStandardMaterial({
   color: 0xffd35a,
+  emissive: 0x3d2500,
   metalness: 0.35,
   roughness: 0.32,
 });
@@ -78,25 +83,85 @@ const enemyWeaponMat = new THREE.MeshStandardMaterial({
   roughness: 0.36,
 });
 
-function createFighter(material) {
+function makeLimb(length, radius, material) {
+  const limb = new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, 8, 16), material);
+  limb.castShadow = true;
+  return limb;
+}
+
+function createFighter(material, accentMaterial) {
   const group = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.56, 0.34, 24), darkMat);
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.52, 28, 18), material);
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.32, 0.16, 24), darkMat);
-  base.castShadow = true;
-  body.castShadow = true;
-  cap.castShadow = true;
-  base.position.y = 0.18;
-  body.position.y = 0.62;
-  cap.position.y = 1.12;
-  group.add(base, body, cap);
-  group.userData.radius = 0.54;
+  const hips = new THREE.Group();
+  const torso = makeLimb(0.62, 0.28, material);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 28, 18), skinMat);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.245, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.52), hairMat);
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.3), accentMaterial);
+  const weaponMount = new THREE.Group();
+  const leftArm = new THREE.Group();
+  const rightArm = new THREE.Group();
+  const leftLeg = new THREE.Group();
+  const rightLeg = new THREE.Group();
+
+  torso.position.y = 1.02;
+  torso.rotation.z = 0.04;
+  head.position.y = 1.62;
+  hair.position.y = 1.7;
+  chest.position.y = 1.18;
+
+  const leftUpperArm = makeLimb(0.38, 0.07, skinMat);
+  const leftForearm = makeLimb(0.38, 0.065, skinMat);
+  leftUpperArm.position.y = -0.19;
+  leftForearm.position.y = -0.56;
+  leftArm.position.set(-0.36, 1.28, 0);
+  leftArm.rotation.z = 0.45;
+  leftArm.add(leftUpperArm, leftForearm);
+
+  const rightUpperArm = makeLimb(0.36, 0.07, skinMat);
+  const rightForearm = makeLimb(0.44, 0.065, skinMat);
+  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.085, 16, 12), skinMat);
+  rightUpperArm.position.y = -0.18;
+  rightForearm.position.y = -0.53;
+  hand.position.y = -0.78;
+  rightArm.position.set(0.37, 1.28, 0);
+  rightArm.rotation.z = -1.18;
+  rightArm.add(rightUpperArm, rightForearm, hand);
+
+  const leftThigh = makeLimb(0.38, 0.09, pantsMat);
+  const leftShin = makeLimb(0.42, 0.075, skinMat);
+  const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.32), shoeMat);
+  leftThigh.position.y = -0.19;
+  leftShin.position.y = -0.58;
+  leftShoe.position.set(0.04, -0.83, 0.08);
+  leftLeg.position.set(-0.17, 0.74, 0);
+  leftLeg.add(leftThigh, leftShin, leftShoe);
+
+  const rightThigh = makeLimb(0.38, 0.09, pantsMat);
+  const rightShin = makeLimb(0.42, 0.075, skinMat);
+  const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.32), shoeMat);
+  rightThigh.position.y = -0.19;
+  rightShin.position.y = -0.58;
+  rightShoe.position.set(0.04, -0.83, 0.08);
+  rightLeg.position.set(0.17, 0.74, 0);
+  rightLeg.add(rightThigh, rightShin, rightShoe);
+
+  [head, hair, chest, leftShoe, rightShoe].forEach((mesh) => {
+    mesh.castShadow = true;
+  });
+
+  hips.add(torso, chest, head, hair, leftArm, rightArm, leftLeg, rightLeg);
+  weaponMount.position.set(0.42, 0.78, 0);
+  group.add(hips);
+  group.add(weaponMount);
+  group.userData.radius = 0.34;
   group.userData.velocity = new THREE.Vector3();
+  group.userData.weaponMount = weaponMount;
+  group.userData.parts = { hips, leftArm, rightArm, leftLeg, rightLeg };
+  group.userData.weaponReach = 2;
   return group;
 }
 
-const player = createFighter(playerMat);
-const enemy = createFighter(enemyMat);
+const player = createFighter(playerMat, playerMat);
+const enemy = createFighter(enemyMat, enemyMat);
 scene.add(player, enemy);
 
 let playerWeapon = null;
@@ -118,6 +183,54 @@ const state = {
   currentStroke: [],
 };
 
+function normalizeGeneratedPaths(paths) {
+  const points = paths.flat();
+  if (!points.length) return [];
+  const bounds = points.reduce(
+    (box, point) => ({
+      minX: Math.min(box.minX, point.x),
+      maxX: Math.max(box.maxX, point.x),
+      minY: Math.min(box.minY, point.y),
+      maxY: Math.max(box.maxY, point.y),
+    }),
+    { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity },
+  );
+  const width = Math.max(bounds.maxX - bounds.minX, 1);
+  const height = Math.max(bounds.maxY - bounds.minY, 1);
+  return paths.map((path) =>
+    path.map((point) => ({
+      x: (point.x - bounds.minX) / width,
+      y: 1 - (point.y - bounds.minY) / height,
+    })),
+  );
+}
+
+window.__gameDebug = {
+  getState: () => ({
+    phase: state.phase,
+    round: state.round,
+    coins: state.coins,
+    inkUsed: state.inkUsed,
+    playerPosition: player.position.toArray(),
+    enemyPosition: enemy.position.toArray(),
+    playerSpeed: player.userData.velocity.length(),
+    enemySpeed: enemy.userData.velocity.length(),
+  }),
+  getFighterParts: () => ({
+    player: Object.keys(player.userData.parts),
+    enemy: Object.keys(enemy.userData.parts),
+  }),
+  getWeaponTrace: () => {
+    const weapon = playerWeapon;
+    return {
+      sourceNormalized: weapon?.userData.sourceNormalized ?? [],
+      generatedNormalized: normalizeGeneratedPaths(weapon?.userData.generatedPaths ?? []),
+      reach: weapon?.userData.reach ?? 0,
+      meshCount: weapon?.children.length ?? 0,
+    };
+  },
+};
+
 function resetFighters() {
   player.position.set(-1.8, 0, 0);
   enemy.position.set(1.8, 0, 0);
@@ -125,6 +238,14 @@ function resetFighters() {
   enemy.rotation.set(0, Math.PI, 0);
   player.userData.velocity.set(0, 0, 0);
   enemy.userData.velocity.set(0, 0, 0);
+  [player, enemy].forEach((fighter) => {
+    fighter.position.y = 0;
+    fighter.userData.parts.hips.rotation.set(0, 0, 0);
+    fighter.userData.parts.leftArm.rotation.set(0, 0.15, 0.45);
+    fighter.userData.parts.rightArm.rotation.set(0, -0.1, -1.18);
+    fighter.userData.parts.leftLeg.rotation.set(0, 0, 0);
+    fighter.userData.parts.rightLeg.rotation.set(0, 0, 0);
+  });
   state.winner = null;
 }
 
@@ -234,53 +355,93 @@ function strokeBounds(strokes) {
   );
 }
 
+function normalizeStrokes(strokes) {
+  const source = strokes.length ? strokes : [[{ x: 80, y: 120 }, { x: 340, y: 90 }]];
+  const bounds = strokeBounds(source);
+  const width = Math.max(bounds.maxX - bounds.minX, 1);
+  const height = Math.max(bounds.maxY - bounds.minY, 1);
+  return source.map((stroke) =>
+    stroke.map((point) => ({
+      x: (point.x - bounds.minX) / width,
+      y: (point.y - bounds.minY) / height,
+    })),
+  );
+}
+
+function drawingPointToWeapon(point, bounds, scale) {
+  const width = Math.max(bounds.maxX - bounds.minX, 1);
+  const height = Math.max(bounds.maxY - bounds.minY, 1);
+  return new THREE.Vector3(
+    (point.x - bounds.minX) * scale + 0.16,
+    -(point.y - bounds.minY - height / 2) * scale,
+    0,
+  );
+}
+
+function createTubeBetween(a, b, radius, material) {
+  const delta = new THREE.Vector3().subVectors(b, a);
+  const length = Math.max(delta.length(), 0.001);
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 14), material);
+  mesh.position.copy(a).add(b).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
+  mesh.castShadow = true;
+  return mesh;
+}
+
 function createWeaponFromDrawing(strokes, material) {
   const weapon = new THREE.Group();
   const source = strokes.length ? strokes : [[{ x: 80, y: 120 }, { x: 340, y: 90 }]];
   const bounds = strokeBounds(source);
   const width = Math.max(bounds.maxX - bounds.minX, 1);
   const height = Math.max(bounds.maxY - bounds.minY, 1);
-  const scale = 2.65 / Math.max(width, height, 120);
+  const scale = Math.min(2.9 / width, 1.55 / height, 0.028);
+  const radius = Math.max(0.045, Math.min(0.085, scale * 5.2));
+  const generatedPaths = [];
 
   source.forEach((stroke) => {
+    const path = [];
     for (let i = 1; i < stroke.length; i += 1) {
-      const a = stroke[i - 1];
-      const b = stroke[i];
-      const ax = (a.x - bounds.minX - width / 2) * scale + 1.25;
-      const bx = (b.x - bounds.minX - width / 2) * scale + 1.25;
-      const ay = -(a.y - bounds.minY - height / 2) * scale + 0.82;
-      const by = -(b.y - bounds.minY - height / 2) * scale + 0.82;
-      const midX = (ax + bx) / 2;
-      const midY = (ay + by) / 2;
-      const length = Math.max(Math.hypot(bx - ax, by - ay), 0.08);
-      const rod = new THREE.Mesh(new THREE.BoxGeometry(length, 0.12, 0.2), material);
-      rod.position.set(midX, midY, 0);
-      rod.rotation.z = Math.atan2(by - ay, bx - ax);
-      rod.castShadow = true;
-      weapon.add(rod);
+      const a = drawingPointToWeapon(stroke[i - 1], bounds, scale);
+      const b = drawingPointToWeapon(stroke[i], bounds, scale);
+      if (i === 1) path.push({ x: a.x, y: a.y });
+      path.push({ x: b.x, y: b.y });
+      weapon.add(createTubeBetween(a, b, radius, material));
     }
+    stroke.forEach((point) => {
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(radius * 1.05, 12, 8),
+        material,
+      );
+      sphere.position.copy(drawingPointToWeapon(point, bounds, scale));
+      sphere.castShadow = true;
+      weapon.add(sphere);
+    });
+    if (path.length) generatedPaths.push(path);
   });
 
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.38, 24), material);
-  tip.rotation.z = -Math.PI / 2;
-  tip.position.set(2.65, 0.82, 0);
-  tip.castShadow = true;
-  weapon.add(tip);
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.52, 16), darkMat);
+  grip.rotation.z = Math.PI / 2;
+  grip.position.set(0.02, 0, 0);
+  grip.castShadow = true;
+  weapon.add(grip);
 
-  weapon.userData.reach = Math.min(2.95, 1.25 + Math.sqrt(state.inkUsed || 240) / 25);
+  weapon.userData.sourceNormalized = normalizeStrokes(source);
+  weapon.userData.generatedPaths = generatedPaths;
+  weapon.userData.bounds = { ...bounds, width, height, scale };
+  weapon.userData.reach = Math.min(3.25, 0.46 + width * scale);
   return weapon;
 }
 
 function createEnemyWeapon() {
   const weapon = new THREE.Group();
-  const handle = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.14, 0.2), enemyWeaponMat);
-  const weight = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.5, 0.42), enemyWeaponMat);
-  handle.position.set(1.1, 0.82, 0);
-  weight.position.set(2.1, 0.82, 0);
+  const handle = createTubeBetween(new THREE.Vector3(0.1, 0, 0), new THREE.Vector3(2.1, 0.16, 0), 0.07, enemyWeaponMat);
+  const weight = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.5, 0.42), enemyWeaponMat);
+  weight.position.set(2.28, 0.18, 0);
   handle.castShadow = true;
   weight.castShadow = true;
   weapon.add(handle, weight);
   weapon.userData.reach = 2.3 + Math.min(state.round * 0.04, 0.5);
+  weapon.userData.generatedPaths = [[{ x: 0.1, y: 0 }, { x: 2.1, y: 0.16 }]];
   return weapon;
 }
 
@@ -292,8 +453,10 @@ function beginAttack() {
   clearWeapon(enemyWeapon);
   playerWeapon = createWeaponFromDrawing(state.strokes, weaponMat);
   enemyWeapon = createEnemyWeapon();
-  player.add(playerWeapon);
-  enemy.add(enemyWeapon);
+  player.userData.weaponMount.add(playerWeapon);
+  enemy.userData.weaponMount.add(enemyWeapon);
+  player.userData.weaponReach = playerWeapon.userData.reach;
+  enemy.userData.weaponReach = enemyWeapon.userData.reach;
   attackBtn.disabled = true;
   clearBtn.disabled = true;
   updateUi();
@@ -326,12 +489,12 @@ function nextRound() {
 }
 
 function pushByWeapon(attacker, defender, strength) {
-  const reach = attacker.children.find((child) => child.userData.reach)?.userData.reach ?? 2;
+  const reach = attacker.userData.weaponReach ?? 2;
   const delta = new THREE.Vector3().subVectors(defender.position, attacker.position);
   const forward = new THREE.Vector3(1, 0, 0).applyQuaternion(attacker.quaternion);
   const forwardDistance = delta.dot(forward);
   const sideDistance = Math.abs(delta.z);
-  if (forwardDistance > 0.35 && forwardDistance < reach && sideDistance < 0.92) {
+  if (forwardDistance > 0.2 && forwardDistance < reach && sideDistance < 0.98) {
     defender.userData.velocity.addScaledVector(forward, strength);
   }
 }
@@ -389,6 +552,30 @@ updateUi();
 
 const clock = new THREE.Clock();
 
+function animateFighter(fighter, time, intensity, side) {
+  const parts = fighter.userData.parts;
+  const run = Math.sin(time * 14 + side);
+  const counterRun = Math.sin(time * 14 + side + Math.PI);
+  parts.hips.position.y = Math.abs(run) * 0.06 * intensity;
+  parts.hips.rotation.z = run * 0.08 * intensity;
+  parts.leftLeg.rotation.z = run * 0.42 * intensity;
+  parts.rightLeg.rotation.z = counterRun * 0.42 * intensity;
+  parts.leftArm.rotation.z = 0.42 + counterRun * 0.36 * intensity;
+  parts.rightArm.rotation.z = -1.05 + Math.sin(time * 18 + side) * 0.34 * intensity;
+  fighter.userData.weaponMount.rotation.z = Math.sin(time * 18 + side) * 0.2 * intensity;
+}
+
+function relaxFighter(fighter) {
+  const parts = fighter.userData.parts;
+  parts.hips.position.y *= 0.84;
+  parts.hips.rotation.z *= 0.84;
+  parts.leftLeg.rotation.z *= 0.84;
+  parts.rightLeg.rotation.z *= 0.84;
+  parts.leftArm.rotation.z += (0.45 - parts.leftArm.rotation.z) * 0.12;
+  parts.rightArm.rotation.z += (-1.18 - parts.rightArm.rotation.z) * 0.12;
+  fighter.userData.weaponMount.rotation.z *= 0.82;
+}
+
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.033);
   const time = clock.elapsedTime;
@@ -399,23 +586,25 @@ function animate() {
   if (state.phase === "attack") {
     state.attackTime += dt;
     const playerBoost = 1 + (state.powerLevel - 1) * 0.18;
-    const enemyBoost = 0.9 + state.round * 0.035;
+    const enemyBoost = 0.92 + state.round * 0.035;
     const toEnemy = new THREE.Vector3().subVectors(enemy.position, player.position).normalize();
     const toPlayer = new THREE.Vector3().subVectors(player.position, enemy.position).normalize();
-    player.userData.velocity.addScaledVector(toEnemy, dt * 0.82);
-    enemy.userData.velocity.addScaledVector(toPlayer, dt * 0.76);
+    player.userData.velocity.addScaledVector(toEnemy, dt * 2.7);
+    enemy.userData.velocity.addScaledVector(toPlayer, dt * 2.45);
 
     player.rotation.y = Math.atan2(-toEnemy.z, toEnemy.x);
     enemy.rotation.y = Math.atan2(-toPlayer.z, toPlayer.x);
-    player.rotation.z = Math.sin(time * 8) * 0.08;
-    enemy.rotation.z = Math.cos(time * 8) * 0.08;
+    player.rotation.z = Math.sin(time * 12) * 0.06;
+    enemy.rotation.z = Math.cos(time * 12) * 0.06;
+    animateFighter(player, time, 1, 0);
+    animateFighter(enemy, time, 0.95, Math.PI * 0.45);
 
-    pushByWeapon(player, enemy, dt * 9.4 * playerBoost);
-    pushByWeapon(enemy, player, dt * 7.5 * enemyBoost);
+    pushByWeapon(player, enemy, dt * 22 * playerBoost);
+    pushByWeapon(enemy, player, dt * 17.2 * enemyBoost);
 
     [player, enemy].forEach((fighter) => {
       fighter.position.addScaledVector(fighter.userData.velocity, dt);
-      fighter.userData.velocity.multiplyScalar(0.95);
+      fighter.userData.velocity.multiplyScalar(0.91);
     });
 
     if (player.position.length() > arenaRadius + 0.3) finishRound("enemy");
@@ -423,6 +612,9 @@ function animate() {
     if (state.attackTime > 9 && state.phase === "attack") {
       finishRound(player.position.length() < enemy.position.length() ? "player" : "enemy");
     }
+  } else {
+    relaxFighter(player);
+    relaxFighter(enemy);
   }
 
   if (state.phase === "result") {
